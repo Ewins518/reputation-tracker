@@ -51,7 +51,7 @@ x-airflow-common:
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
   image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.7.3}
-  # build: .
+  build: .
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -71,12 +71,13 @@ x-airflow-common:
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    _PIP_ADDITIONAL_REQUIREMENTS: ''
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/spark:/spark
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -99,7 +100,7 @@ services:
       interval: 10s
       retries: 5
       start_period: 5s
-    restart: always
+    restart: no
 
   redis:
     image: redis:latest
@@ -111,7 +112,7 @@ services:
       timeout: 30s
       retries: 50
       start_period: 30s
-    restart: always
+    restart: no
 
   airflow-webserver:
     <<: *airflow-common
@@ -124,7 +125,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    restart: always
+    restart: no
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -139,7 +140,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    restart: always
+    restart: no
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -162,7 +163,7 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
-    restart: always
+    restart: no
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -177,7 +178,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    restart: always
+    restart: no
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -290,7 +291,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    restart: always
+    restart: no
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -314,11 +315,14 @@ services:
       - zookeeper
     ports:
       - 9092:9092
+      - 19092:19092
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092  
+      KAFKA_LISTENERS: PLAINTEXT://:9092,DOCKER_HACK://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092 ,DOCKER_HACK://host.docker.internal:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,DOCKER_HACK:PLAINTEXT
  
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
@@ -345,6 +349,36 @@ services:
     ports:
       - "50075:50075"
 
+  spark:
+    image: bitnami/spark:3.1.2
+    container_name: spark
+    hostname: spark
+    environment:
+        - SPARK_MODE=master
+        - SPARK_RPC_AUTHENTICATION_ENABLED=no
+        - SPARK_RPC_ENCRYPTION_ENABLED=no
+        - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+        - SPARK_SSL_ENABLED=no
+    volumes:
+        - ./spark:/spark
+    ports:
+        - "8181:8080"
+        - "7077:7077"
+
+  spark-worker:
+    image: bitnami/spark:3.1.2
+    container_name: spark-worker
+    environment:
+        - SPARK_MODE=worker
+        - SPARK_MASTER_URL=spark://spark:7077
+        - SPARK_WORKER_MEMORY=2G
+        - SPARK_WORKER_CORES=2
+        - SPARK_RPC_AUTHENTICATION_ENABLED=no
+        - SPARK_RPC_ENCRYPTION_ENABLED=no
+        - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+        - SPARK_SSL_ENABLED=no
+    volumes:
+        - ./spark:/spark
 
 volumes:
   postgres-db-volume:
