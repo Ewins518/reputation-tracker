@@ -78,6 +78,8 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/spark:/spark
+    - ${AIRFLOW_PROJ_DIR:-.}/jars:/usr/local/spark/assembly/target/scala-2.12/jars
+
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -361,6 +363,7 @@ services:
         - SPARK_SSL_ENABLED=no
     volumes:
         - ./spark:/spark
+        - ./jars:/opt/bitnami/spark/jars
     ports:
         - "8181:8080"
         - "7077:7077"
@@ -379,6 +382,7 @@ services:
         - SPARK_SSL_ENABLED=no
     volumes:
         - ./spark:/spark
+        - ./jars:/opt/bitnami/spark/jars
 
 volumes:
   postgres-db-volume:
