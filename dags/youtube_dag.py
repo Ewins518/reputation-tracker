@@ -1,10 +1,8 @@
 from airflow import DAG 
-from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 from pull_youtube_data import stream_data
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 from airflow.providers.apache.kafka.operators.produce import ProduceToTopicOperator
-from airflow.providers.apache.kafka.operators.consume import ConsumeFromTopicOperator
 
 default_args = {
     'owner': 'airflow',
@@ -26,13 +24,6 @@ dag = DAG(
     tags=["youtube"]
 )
 
-#pull_data = PythonOperator(
-#                                task_id='pull_youtube_comment',
-#                                python_callable=stream_data,
-#                                op_kwargs ={'product_name': 'hp'},
-#                                dag = dag
-#                    )
-
 pull_data = ProduceToTopicOperator(
         task_id="pull_youtube_comment",
         kafka_config_id="kafka_default",
@@ -42,8 +33,6 @@ pull_data = ProduceToTopicOperator(
             "product_name": "asus"
         },
 )
-
-
 
 spark_master = "spark://spark:7077"
 spark_app_name = "Spark Hello World"

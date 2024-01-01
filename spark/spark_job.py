@@ -5,7 +5,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType,IntegerType, BooleanType
 import logging
-
+from datetime import datetime
 import sys
 sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
 
@@ -58,12 +58,18 @@ def create_selection_df_from_kafka(spark_df):
 
     return sel
 
-def read_data_from_hdfs():
-    # for LLM model and streamlit
-    spark_conn = create_spark_connection()
-    df = spark_conn.read.parquet("hdfs://namenode:8020/hadoop/hdfs/youtube/data.parquet")
-    df.show()
+def write_data_in_hdfs(spark_df):
+    current_date = datetime.now().strftime("%Y_%m_%d")
+    current_time = datetime.now().strftime("%H_%M")
 
+    parquet_path = f"hdfs://namenode:8020/hadoop/hdfs/youtube/{current_date}/data_{current_time}.parquet"
+
+    spark_df.write.parquet(parquet_path)
+
+def read_data_from_hdfs(spark_conn,date="2024_01_01",time="12_10"):
+    # for LLM model and streamlit
+    df = spark_conn.read.parquet(f"hdfs://namenode:8020/hadoop/hdfs/youtube/{date}/data_{time}.parquet")
+    return df
 
 if __name__ == "__main__":
     # create spark connection
@@ -74,9 +80,8 @@ if __name__ == "__main__":
         spark_df = connect_to_kafka(spark_conn)
         selection_df = create_selection_df_from_kafka(spark_df)
 
-        selection_df.show()
+        write_data_in_hdfs(selection_df)
 
-        selection_df.write.parquet("hdfs://namenode:8020/hadoop/hdfs/youtube1/data4.parquet")
-
-        df = spark_conn.read.parquet("hdfs://namenode:8020/hadoop/hdfs/youtube1/data4.parquet")
+        df = read_data_from_hdfs(spark_conn)
+        print("Let show data from HDFS")
         df.show()

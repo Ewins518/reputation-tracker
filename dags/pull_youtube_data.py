@@ -17,7 +17,7 @@ def getcomments(video):
   request = youtube.commentThreads().list(
       part="snippet",
       videoId=video,
-      maxResults=100
+      maxResults=10
   )
 
   comments = []
@@ -66,7 +66,7 @@ def search_videos(product_name):
         q=f"{product_name}",
         part="id",
         type="video",
-        maxResults=5  # Vous pouvez ajuster le nombre de résultats
+        maxResults=2  # Vous pouvez ajuster le nombre de résultats
     )
 
     response = request.execute()
@@ -88,12 +88,6 @@ def get_comments_for_product(product_name):
     return df
 
 def stream_data(product_name):
-
-#    producer = KafkaProducer(
-#       acks='all',
-#       bootstrap_servers=['kafka:9092'], 
-#       value_serializer=lambda v: bytes(json.dumps(v, default=str).encode('utf-8'))
-#)
    
     try:
         res = get_comments_for_product(product_name)
@@ -110,14 +104,7 @@ def stream_data(product_name):
                     "public": row['public']
                 })
             )
-        #print(res)
-        #json_data = res.to_json(orient='records', lines=True)
-
-        ##producer.send('youtube', value=json_data)
-        #final_json = {"data": json_data}
-
         print("Les données sont envoyé")
-        #return final_json
     
     except Exception as e:
         logging.error(f'An error occured: {e}')
