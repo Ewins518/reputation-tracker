@@ -6,8 +6,15 @@ from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType,IntegerType, BooleanType
 import logging
 from datetime import datetime
+import requests
+from pyspark.sql.functions import udf
+from pyspark.sql.types import IntegerType
 import sys
+import os
+
 sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
+os.environ['PYSPARK_PYTHON'] = "/usr/local/bin/python3.8"
+os.environ['PYSPARK_DRIVER_PYTHON'] = "/usr/local/bin/python3.8"
 
 def create_spark_connection():
     s_conn = None
@@ -71,17 +78,32 @@ def read_data_from_hdfs(spark_conn,date="2024_01_01",time="12_10"):
     df = spark_conn.read.parquet(f"hdfs://namenode:8020/hadoop/hdfs/youtube/{date}/data_{time}.parquet")
     return df
 
+#La fonction UDF pour interroger reputation_inference
+@udf(IntegerType())
+def predict_sentiment(comment):
+    url = 'http://reputation_inference:80/predict_sentiment/' + comment
+    response = requests.post(url)
+    result = response.json()
+    print(result)
+    return result
+
 if __name__ == "__main__":
     # create spark connection
     spark_conn = create_spark_connection()
 
     if spark_conn is not None:
         # connect to kafka with spark connection
-        spark_df = connect_to_kafka(spark_conn)
-        selection_df = create_selection_df_from_kafka(spark_df)
-
-        write_data_in_hdfs(selection_df)
+        #spark_df = connect_to_kafka(spark_conn)
+        #selection_df = create_selection_df_from_kafka(spark_df)
+#
+        #write_data_in_hdfs(selection_df)
 
         df = read_data_from_hdfs(spark_conn)
-        print("Let show data from HDFS")
+        print("Let show data from HDFS") 
         df.show()
+
+        df_100 = df.limit(100)
+
+        df_with_sentiment = df.withColumn("sentiment", predict_sentiment(df_100["text"]))
+        print(df_with_sentiment)
+        df_with_sentiment.show()

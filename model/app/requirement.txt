@@ -1,0 +1,7 @@
+uvicorn
+transformers
+numpy
+fastapi
+onnxruntime
+pandas
+onnx

@@ -42,6 +42,6 @@ USER airflow
 
 WORKDIR /
 #
-COPY requirements.txt /
+COPY airflow_dockerfile/requirements.txt /
 #
 RUN pip install --trusted-host pypi.python.org -r /requirements.txt

@@ -390,6 +390,13 @@ services:
     volumes:
         - ./spark:/spark
 
+  product_reputation_api:
+    image: reputation_inference
+    ports:
+      - "80:80"
+    container_name: reputation_inference
+
+
 volumes:
   postgres-db-volume:
   kafka_data:

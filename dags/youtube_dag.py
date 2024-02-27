@@ -30,7 +30,7 @@ pull_data = ProduceToTopicOperator(
         topic="youtube",
         producer_function=stream_data,
         producer_function_kwargs={
-            "product_name": "asus"
+            "product_name": "Ferrari"
         },
 )
 
@@ -45,4 +45,5 @@ spark_data = SparkSubmitOperator(
         dag=dag
     )
 
-pull_data >> spark_data
+#pull_data >> spark_data
+spark_data
