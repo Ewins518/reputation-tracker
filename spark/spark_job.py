@@ -104,6 +104,6 @@ if __name__ == "__main__":
 
         df_100 = df.limit(100)
 
-        df_with_sentiment = df.withColumn("sentiment", predict_sentiment(df_100["text"]))
+        df_with_sentiment = df_100.withColumn("sentiment", predict_sentiment(df_100["text"]))
         print(df_with_sentiment)
         df_with_sentiment.show()
