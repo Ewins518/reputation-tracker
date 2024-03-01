@@ -51,12 +51,8 @@ def connect_to_kafka(spark_conn):
 
 def create_selection_df_from_kafka(spark_df):
     schema = StructType([
-        StructField("author", StringType(), False),
         StructField("updated_at", StringType(), False),
-        StructField("like_count", IntegerType(), False),
         StructField("text", StringType(), False),
-         StructField("video_id", StringType(), False),
-        StructField("public", BooleanType(), False),
     ])
 
     sel = spark_df.selectExpr("CAST(value AS STRING)") \

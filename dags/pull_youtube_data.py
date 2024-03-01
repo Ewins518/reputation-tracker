@@ -49,15 +49,15 @@ def getcomments(video):
       comment = item['snippet']['topLevelComment']['snippet']
       public = item['snippet']['isPublic']
       comments.append([
-          comment['authorDisplayName'],
+          #comment['authorDisplayName'],
           comment['publishedAt'],
-          comment['likeCount'],
+          #comment['likeCount'],
           comment['textOriginal'],
-          comment['videoId'],
-          public
+          #comment['videoId'],
+          #public
       ])
 
-  df2 = pd.DataFrame(comments, columns=['author', 'updated_at', 'like_count', 'text','video_id','public'])
+  df2 = pd.DataFrame(comments, columns=['updated_at', 'text'])
   return df2
 
 ################### SEARCH VIDEOS ####################
@@ -96,12 +96,8 @@ def stream_data(product_name):
             yield (
                 json.dumps(index),
                 json.dumps({
-                    "author": row['author'],
                     "updated_at": row['updated_at'],
-                    "like_count": row['like_count'],
                     "text": row['text'],
-                    "video_id": row['video_id'],
-                    "public": row['public']
                 })
             )
         print("Les données sont envoyé")
