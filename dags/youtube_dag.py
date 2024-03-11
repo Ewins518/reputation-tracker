@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from pull_youtube_data import stream_data
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 from airflow.providers.apache.kafka.operators.produce import ProduceToTopicOperator
+from streamlit_app.app import return_selected_product
 
 default_args = {
     'owner': 'airflow',
@@ -24,13 +25,15 @@ dag = DAG(
     tags=["youtube"]
 )
 
+product_name = return_selected_product()
+
 pull_data = ProduceToTopicOperator(
         task_id="pull_youtube_comment",
         kafka_config_id="kafka_default",
         topic="youtube",
         producer_function=stream_data,
         producer_function_kwargs={
-            "product_name": "Ferrari"
+            "product_name": product_name
         },
 )
 

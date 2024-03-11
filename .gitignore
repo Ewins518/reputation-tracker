@@ -1,2 +1,3 @@
 logs/
 model/app/distilbert_model.onnx
+streamlit_app/macbook.csv

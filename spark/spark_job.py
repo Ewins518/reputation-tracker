@@ -83,6 +83,19 @@ def predict_sentiment(comment):
     print(result)
     return result
 
+# La fonction pour recuperer les sentiments à passer a stremlit
+def get_sentiment(df):
+    df_with_sentiment = df.withColumn("sentiment", predict_sentiment(df["text"]))
+    #retourner seulement la colonne sentiment
+    sentiments = df_with_sentiment.select("sentiment")
+    return sentiments
+
+#recuperer la colonne text du dataframe
+def get_text(df):
+    #retourner seulement la colonne text
+    texts = df.select("text")
+    return texts
+
 if __name__ == "__main__":
     # create spark connection
     spark_conn = create_spark_connection()
