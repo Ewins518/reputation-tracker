@@ -4,6 +4,8 @@ import numpy as np
 import plotly.express as px
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+from dags.trigger_dag import trigger_dag
+from streamlit import session_state as state
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
@@ -28,6 +30,10 @@ def setup_sidebar(webscrap):
     selected_subcategory = st.sidebar.selectbox("Sous-Catégorie", webscrap[webscrap['Catégorie'] == selected_category]['Sous-Catégorie'].unique())
     selected_product = st.sidebar.selectbox("Produit", webscrap[webscrap['Sous-Catégorie'] == selected_subcategory]['Produit'].unique())
 
+    
+    # Store selected_product in Streamlit's state to keep it between reruns
+    state.selected_product = selected_product
+    
     return search_query, selected_category, selected_subcategory, selected_product
 
 
@@ -118,6 +124,20 @@ def main():
     commentaire = pd.read_csv("streamlit_app/macbook.csv")
 
     search_query, selected_category, selected_subcategory, selected_product = setup_sidebar(webscrap)
+
+    if 'trigger_status' not in st.session_state:
+            st.session_state.trigger_status = ''
+
+    if st.sidebar.button("Trigger Airflow DAG"):
+        print(st.session_state.selected_product)
+        response = trigger_dag("youtube_data", st.session_state.selected_product)
+
+        if response.status_code == 200:
+            st.session_state.trigger_status = "DAG triggered successfully!"
+        else:
+            st.session_state.trigger_status = f"Failed to trigger DAG. Status Code: {response.status_code}"
+
+    st.sidebar.write(st.session_state.trigger_status)
 
     filtered_data = filter_data(search_query, selected_category, selected_subcategory, selected_product, webscrap, df)
 
