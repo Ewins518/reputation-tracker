@@ -16,6 +16,9 @@ sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
 os.environ['PYSPARK_PYTHON'] = "/usr/local/bin/python3.8"
 os.environ['PYSPARK_DRIVER_PYTHON'] = "/usr/local/bin/python3.8"
 
+today_date = datetime.now().strftime("%Y_%m_%d")
+
+
 def create_spark_connection():
     s_conn = None
 
@@ -65,13 +68,15 @@ def write_data_in_hdfs(spark_df):
     current_date = datetime.now().strftime("%Y_%m_%d")
     current_time = datetime.now().strftime("%H_%M")
 
-    parquet_path = f"hdfs://namenode:8020/hadoop/hdfs/youtube/{current_date}/data_{current_time}.parquet"
+    #parquet_path = f"hdfs://namenode:8020/hadoop/hdfs/youtube/{current_date}/data_{current_time}.parquet"
+    parquet_path = f"hdfs://namenode:8020/hadoop/hdfs/youtube/data_{current_date}.parquet"
+
 
     spark_df.write.parquet(parquet_path)
 
-def read_data_from_hdfs(spark_conn,date="2024_01_01",time="12_10"):
+def read_data_from_hdfs(spark_conn,date=today_date,time="12_10"):
     # for LLM model and streamlit
-    df = spark_conn.read.parquet(f"hdfs://namenode:8020/hadoop/hdfs/youtube/{date}/data_{time}.parquet")
+    df = spark_conn.read.parquet(f"hdfs://namenode:8020/hadoop/hdfs/youtube/data_{date}.parquet")
     return df
 
 #La fonction UDF pour interroger reputation_inference
@@ -101,11 +106,11 @@ if __name__ == "__main__":
     spark_conn = create_spark_connection()
 
     if spark_conn is not None:
-        # connect to kafka with spark connection
-        #spark_df = connect_to_kafka(spark_conn)
-        #selection_df = create_selection_df_from_kafka(spark_df)
-#
-        #write_data_in_hdfs(selection_df)
+        #connect to kafka with spark connection
+        spark_df = connect_to_kafka(spark_conn)
+        selection_df = create_selection_df_from_kafka(spark_df)
+
+        write_data_in_hdfs(selection_df)
 
         df = read_data_from_hdfs(spark_conn)
         print("Let show data from HDFS") 

@@ -4,6 +4,13 @@ import numpy as np
 import plotly.express as px
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+import sys
+import os
+
+# Dynamically add the project root to sys.path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
 from dags.trigger_dag import trigger_dag
 from streamlit import session_state as state
 
@@ -129,7 +136,6 @@ def main():
             st.session_state.trigger_status = ''
 
     if st.sidebar.button("Trigger Airflow DAG"):
-        print(st.session_state.selected_product)
         response = trigger_dag("youtube_data", st.session_state.selected_product)
 
         if response.status_code == 200:

@@ -1,0 +1,41 @@
+.
+├── airflow_dockerfile
+│   ├── Dockerfile
+│   └── requirements.txt
+├── config
+├── dags
+│   ├── __init__.py
+│   ├── pull_youtube_data.py
+│   ├── __pycache__
+│   ├── trigger_dag.py
+│   └── youtube_dag.py
+├── docker-compose.yaml
+├── hadoop-hive.env
+├── jars
+│   ├── commons-pool2-2.6.2.jar
+│   ├── kafka_2.13-3.1.2.jar
+│   ├── kafka-clients-2.6.0.jar
+│   ├── spark-sql-kafka-0-10_2.12-3.1.2.jar
+│   ├── spark-streaming-kafka-0-10_2.12-3.1.2.jar
+│   ├── spark-tags_2.12-3.1.2.jar
+│   └── spark-token-provider-kafka-0-10_2.12-3.1.2.jar
+├── logs
+│   ├── dag_id=youtube_data
+│   ├── dag_processor_manager
+│   └── scheduler
+├── model
+│   ├── app
+│   └── Dockerfile
+├── plugins
+├── README.md
+├── spark
+│   └── spark_job.py
+├── spark_dockerfile
+│   ├── Dockerfile
+│   └── spark-env.sh
+├── streamlit_app
+│   ├── app.py
+│   └── macbook.csv
+└── tree.txt
+
+15 directories, 23 files
