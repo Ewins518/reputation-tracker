@@ -27,12 +27,12 @@ def getcomments(video):
       comment = item['snippet']['topLevelComment']['snippet']
       public = item['snippet']['isPublic']
       comments.append([
-          comment['authorDisplayName'],
+         # comment['authorDisplayName'],
           comment['publishedAt'],
-          comment['likeCount'],
+          #comment['likeCount'],
           comment['textOriginal'],
-          comment['videoId'],
-          public
+         # comment['videoId'],
+          #public
       ])
 
   while (1 == 1):
