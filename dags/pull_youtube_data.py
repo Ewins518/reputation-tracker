@@ -42,7 +42,7 @@ def getcomments(video):
      break
 
     nextPageToken = response['nextPageToken']
-    nextRequest = youtube.commentThreads().list(part="snippet", videoId=video, maxResults=100, pageToken=nextPageToken)
+    nextRequest = youtube.commentThreads().list(part="snippet", videoId=video, maxResults=50, pageToken=nextPageToken)
     response = nextRequest.execute()
 
     for item in response['items']:

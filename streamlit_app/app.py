@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import sys
 import os
+import pyarrow.parquet as pq
+import requests
+from tempfile import NamedTemporaryFile
 
 # Dynamically add the project root to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -101,8 +104,50 @@ def display_content(selected_product, df, countries):
         st.map(df, color="Color", size = 500000)
 
 
-def return_selected_product():
-    return
+def read_hdfs_parquet_file(product_name):
+    hdfs_path = f'hdfs://namenode:8020/hadoop/hdfs/youtube/{product_name}.parquet'
+    table = pq.read_table(hdfs_path)
+    df = table.to_pandas()
+    return df
+
+
+def read_hdfs_file_via_webhdfs_stream(product_name):
+    webhdfs_url = f'http://namenode:50070/webhdfs/v1/hadoop/hdfs/youtube/{product_name}.parquet?op=OPEN'
+    # Use stream=True to fetch the content in chunks
+    with requests.get(webhdfs_url, stream=True) as response:
+        response.raise_for_status()  # Ensure the request was successful
+        with NamedTemporaryFile(delete=True) as tmp_file:
+            # Stream the content into a temporary file
+            for chunk in response.iter_content(chunk_size=8192): 
+                tmp_file.write(chunk)
+            tmp_file.seek(0)  # Go back to the beginning of the temporary file
+
+            # Now read the temporary Parquet file with PyArrow
+            table = pq.read_table(tmp_file.name, columns=['sentiment'])
+            df = table.to_pandas()
+            return df
+
+
+def read_hdfs_file_via_webhdfs(product_name):
+    webhdfs_url = f'http://127.0.0.1:50071/webhdfs/v1/hadoop/hdfs/youtube/{product_name}.parquet?op=OPEN'
+    # Make a request to the WebHDFS REST API
+    response = requests.get(webhdfs_url)
+    if response.status_code == 200:
+        # Assuming the file is small enough to be handled in memory
+        # For larger files, consider streaming the response
+        from io import BytesIO
+        import pyarrow.parquet as pq
+
+        # Load the data into a Parquet table
+        table = pq.read_table(BytesIO(response.content), columns=['sentiment'])
+
+        # Convert to Pandas DataFrame
+        df = table.to_pandas()
+        return df
+    else:
+        # Handle errors or invalid responses
+        print(f"Failed to access HDFS file. HTTP status code: {response.status_code}")
+        return None
 
 def main():
     # Dummy data generation and loading - replace with your actual data loading logic
@@ -131,6 +176,9 @@ def main():
     commentaire = pd.read_csv("streamlit_app/macbook.csv")
 
     search_query, selected_category, selected_subcategory, selected_product = setup_sidebar(webscrap)
+
+    sentiment_df = read_hdfs_file_via_webhdfs(selected_product)
+    st.write(sentiment_df)
 
     if 'trigger_status' not in st.session_state:
             st.session_state.trigger_status = ''

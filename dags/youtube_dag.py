@@ -57,6 +57,7 @@ spark_data = SparkSubmitOperator(
         application="/spark/spark_job.py",
         conn_id="spark_default",
         verbose=1,
+        application_args=["--product_name", "{{ ti.xcom_pull(task_ids='get_product_name') }}"],
         dag=dag
     )
 
