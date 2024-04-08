@@ -9,6 +9,8 @@ import os
 import pyarrow.parquet as pq
 import requests
 from tempfile import NamedTemporaryFile
+import json
+from io import BytesIO
 
 # Dynamically add the project root to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -127,27 +129,41 @@ def read_hdfs_file_via_webhdfs_stream(product_name):
             df = table.to_pandas()
             return df
 
+def read_parquet_file_via_webhdfs(full_file_path):
+    open_url = f"http://localhost:50071/webhdfs/v1{full_file_path}?op=OPEN"
+    response = requests.get(open_url, allow_redirects=True)  # Follow redirects to DataNode
+    if response.status_code == 200:
+        # Assuming the data is small enough to fit into memory comfortably
+        file_content = BytesIO(response.content)
+        table = pq.read_table(file_content)
+        return table.to_pandas()
+    else:
+        raise Exception(f"Failed to read file. HTTP status code: {response.status_code}")
+
+
+def list_hdfs_directory_files(product_name):
+    list_url = f"http://localhost:50071/webhdfs/v1/hadoop/hdfs/youtube/{product_name}.parquet?op=LISTSTATUS"
+    response = requests.get(list_url)
+    if response.status_code == 200:
+        file_statuses = response.json().get("FileStatuses", {}).get("FileStatus", [])
+        file_names = [file_status["pathSuffix"] for file_status in file_statuses if file_status["type"] == "FILE"]
+        return file_names
+    else:
+        #raise Exception(f"Failed to list directory. HTTP status code: {response.status_code}")
+        return None
+
 
 def read_hdfs_file_via_webhdfs(product_name):
-    webhdfs_url = f'http://127.0.0.1:50071/webhdfs/v1/hadoop/hdfs/youtube/{product_name}.parquet?op=OPEN'
-    # Make a request to the WebHDFS REST API
-    response = requests.get(webhdfs_url)
-    if response.status_code == 200:
-        # Assuming the file is small enough to be handled in memory
-        # For larger files, consider streaming the response
-        from io import BytesIO
-        import pyarrow.parquet as pq
 
-        # Load the data into a Parquet table
-        table = pq.read_table(BytesIO(response.content), columns=['sentiment'])
-
-        # Convert to Pandas DataFrame
-        df = table.to_pandas()
-        return df
-    else:
-        # Handle errors or invalid responses
-        print(f"Failed to access HDFS file. HTTP status code: {response.status_code}")
-        return None
+    file_names = list_hdfs_directory_files(product_name)
+    # For demonstration, read the first Parquet file found
+    if file_names:
+        parquet_file = next((name for name in file_names if name.endswith('.parquet')), None)
+        if parquet_file:
+            full_file_path = f"/hadoop/hdfs/youtube/{product_name}.parquet/{parquet_file}"
+            df = read_parquet_file_via_webhdfs(full_file_path)
+            return df
+    return None
 
 def main():
     # Dummy data generation and loading - replace with your actual data loading logic
