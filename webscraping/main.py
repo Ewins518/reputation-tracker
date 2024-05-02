@@ -24,15 +24,15 @@ headers = {
 options = webdriver.ChromeOptions()
 options.headless = True  # for headless mode (without UI)
 
-path = ("webscraping/driver/chromedriver-linux64")
-s = Service(path)
+path = ("webscraping/driver/chromedriver-linux64/chromedriver")
+s = Service(path) 
 driver_ = webdriver.Chrome(service=s, options=options)
 
 def get_soup_from_url(currentUrl):
     driver = driver_
     driver.get(currentUrl)
     html = driver.page_source
-    driver.quit()  # It's important to close the driver to free resources
+    #driver.quit()  # It's important to close the driver to free resources
 
     soup = BeautifulSoup(html, "html.parser")
 
@@ -57,11 +57,12 @@ def getCategoriesNames():
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
-        driver.quit()
+        pass
+        #driver.quit()
 
     return categories
 
-def getSubCategorie(Categorie):
+def getCategory(Categorie):
     driver = driver_
     driver.get("https://www.amazon.co.uk/")
     el = driver.find_element(By.ID, 'searchDropdownBox')
@@ -78,10 +79,14 @@ def getSubCategorie(Categorie):
                 break
 
             except:
-                driver.quit()
+                pass
+                #driver.quit()
     return url
 
-def get_sub_categorie(currentUrl):
+def get_sub_categorie(Categorie):
+    currentUrl = getCategory(Categorie)
+    #print('current url', currentUrl)
+
     soup = get_soup_from_url(currentUrl)
     subcategoriesList = soup.find_all("li",  {"class":"apb-browse-refinements-indent-2"})
     
@@ -105,7 +110,7 @@ def get_sub_sub_categories(currentUrl):
     
     if not subcategories_elements:
         # No further subcategories, assume we are at a product level
-        return [], False
+        return []
     
     results = []
     for element in subcategories_elements:
@@ -113,15 +118,17 @@ def get_sub_sub_categories(currentUrl):
         subcategory_url = base_url + element.find('a')['href']
         results.append([subcategory_name, subcategory_url])
     
-    return results, True
+    return results
 
 def get_products_from_page(url):
     soup = get_soup_from_url(url)
-    
     # Find all span elements with the class for product names
-    product_spans = soup.find_all("span", class_="a-size-base-plus a-color-base a-text-normal") 
+    product_spans = soup.find_all("span", class_="a-size-base-plus a-color-base a-text-normal")
+    if not product_spans:
+        product_spans = soup.find_all("span", class_="a-size-medium a-color-base a-text-normal")
+
     product_list = [span.get_text(strip=True) for span in product_spans]
-    
+    #driver_.quit()
     return product_list
 
 def check_url(currentUrl):
@@ -138,6 +145,6 @@ def check_url(currentUrl):
 
 #print(get_sub_sub_categories("https://www.amazon.co.uk/s?bbn=9314650031&rh=n%3A1661657031%2Cn%3A9314671031&dc&qid=1712879466&rnid=9314650031&ref=lp_9314650031_nr_n_4"))
 
-#print(get_products_from_page("https://www.amazon.co.uk/s?bbn=9314650031&rh=n%3A1661657031%2Cn%3A9314671031&dc&qid=1712879466&rnid=9314650031&ref=lp_9314650031_nr_n_4"))
+#print(get_products_from_page("https://www.amazon.co.uk/s?bbn=10068518031&rh=n%3A10068517031%2Cn%3A10387779031&dc&qid=1714580743&rnid=10068518031&ref=lp_10068518031_nr_n_0"))
 
-print(getCategoriesNames())
+#print(getCategoriesNames())

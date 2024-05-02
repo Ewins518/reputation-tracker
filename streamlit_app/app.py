@@ -11,13 +11,14 @@ import requests
 from tempfile import NamedTemporaryFile
 import json
 from io import BytesIO
+from streamlit import session_state as state
+
 
 # Dynamically add the project root to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-
+from webscraping.main import getCategoriesNames,get_sub_categorie,get_sub_sub_categories,get_products_from_page
 from dags.trigger_dag import trigger_dag
-from streamlit import session_state as state
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
@@ -32,21 +33,105 @@ def generate_wordcloud(text):
     plt.axis('off')
     st.pyplot()
 
-# Function to setup the sidebar search and filters
-def setup_sidebar(webscrap):
+
+def clear_subcategory_state():
+    """Clears subcategory selection when category changes."""
+    if 'selected_subcategory' in st.session_state:
+        del st.session_state['selected_subcategory']
+
+import streamlit as st
+
+def select_category():
     st.sidebar.title("Recherche")
     search_query = st.sidebar.text_input("Produit, catégorie ou sous-catégorie :", "")
 
     st.sidebar.title("Filtres")
-    selected_category = st.sidebar.selectbox("Catégorie", webscrap['Catégorie'].unique())
-    selected_subcategory = st.sidebar.selectbox("Sous-Catégorie", webscrap[webscrap['Catégorie'] == selected_category]['Sous-Catégorie'].unique())
-    selected_product = st.sidebar.selectbox("Produit", webscrap[webscrap['Sous-Catégorie'] == selected_subcategory]['Produit'].unique())
+    categories = getCategoriesNames()
+    # Adding a placeholder at the beginning of the categories list
+    options = ["Select a category"] + categories[1:]
+    selected_category = st.sidebar.selectbox(
+        "Catégorie",
+        options=options,
+        index=0,  # Default to the placeholder
+        key='category',
+        on_change=clear_subcategory_state
+    )
+    if selected_category != "Select a category":
+        st.session_state['selected_category'] = selected_category
+    else:
+        selected_category = None
+    
+    return search_query, selected_category
 
-    
-    # Store selected_product in Streamlit's state to keep it between reruns
-    state.selected_product = selected_product
-    
-    return search_query, selected_category, selected_subcategory, selected_product
+
+
+def clear_product_state():
+    """Clears product selection when sub-subcategory changes."""
+    if 'selected_product' in st.session_state:
+        del st.session_state['selected_product']
+
+def select_subsubcategory_or_product(subcategory_dict):
+    if 'selected_subcategory' in st.session_state:
+        # Proceed only if a valid subcategory is selected and present in the session state
+        subsubcategories = get_sub_sub_categories(subcategory_dict[st.session_state['selected_subcategory']])
+        subsubcategory_dict = {name: url for name, url in subsubcategories} if subsubcategories else {}
+
+        # Decide whether to show sub-subcategories or products based on availability
+        if subsubcategories:
+            selected_subsubcategory = st.sidebar.selectbox(
+                "Sous-Sous-Catégorie",
+                options = ["Select the SubSubcategory"] + list(subsubcategory_dict.keys()),
+                index=0,
+                key='subsubcategory',
+                on_change=clear_product_state
+            )
+            if selected_subsubcategory != "Select the SubSubcategory":
+                st.session_state['selected_subsubcategory'] = selected_subsubcategory
+
+                # Load products based on the selected sub-subcategory
+                products = get_products_from_page(subsubcategory_dict[selected_subsubcategory])
+            else:
+                selected_subsubcategory = None
+                products = []
+        else:
+            # No sub-subcategories available, load products directly from the subcategory
+            selected_subsubcategory = None
+            products = get_products_from_page(subcategory_dict[st.session_state['selected_subcategory']])
+        
+        selected_product = st.sidebar.selectbox("Produit", options = ["Select the product"] + list(products), index=0, key='product')
+        st.session_state['selected_product'] = selected_product
+        return selected_subsubcategory, selected_product
+    else:
+        return None, None
+
+
+def select_subcategory(selected_category):
+    subcategories = get_sub_categorie(selected_category)
+    subcategory_dict = {name: url for name, url in subcategories}
+    selected_subcategory = st.sidebar.selectbox("Sous-Catégorie",
+                                                    options = ["Select the Subcategory"] + list(subcategory_dict.keys()),
+                                                    index=0, key='subcategory')
+    if selected_subcategory != "Select the Subcategory":
+        st.session_state['selected_subcategory'] = selected_subcategory
+    else:
+        selected_subcategory = None
+
+    return subcategory_dict, selected_subcategory
+
+def setup_sidebar():
+    search_query, selected_category = select_category()
+
+    selected_subcategory = None
+    selected_product = None
+    if selected_category and 'selected_category' in st.session_state:
+        subcategory_dict, selected_subcategory = select_subcategory(st.session_state['selected_category'])
+
+        if selected_subcategory and 'selected_subcategory' in st.session_state:
+            selected_subsubcategory, selected_product = select_subsubcategory_or_product(subcategory_dict)
+
+    return selected_product
+
+
 
 
 # Function to filter data based on sidebar selections
@@ -166,54 +251,60 @@ def read_hdfs_file_via_webhdfs(product_name):
     return None
 
 def main():
-    # Dummy data generation and loading - replace with your actual data loading logic
+    selected_product = setup_sidebar()
+
     num_points = 105
     countries = ["Morocco", "France", "US", "Canada", "Nigeria"]
-
-    webscrap = pd.DataFrame({
-        'Produit': ['HP', 'Litfun', 'KitchenAid', 'Samsung TV', 'Bobby Jones'],
-        'Catégorie': ['Électronique', 'Fashions', 'Cuisine', 'Électronique', 'Fashions'],
-        'Sous-Catégorie': ['Ordinateurs', 'Chaussures', 'Ustensiles de cuisine', 'TV', 'Chemises'],
-    })
-
-    # Ajout de données supplémentaires
-    additional_data = pd.DataFrame({
-        'Produit': ['Dell', 'Dior', 'HENCKELS', 'Macbook Pro', 'Nike Air Max'],
-        'Catégorie': ['Électronique', 'Fashions', 'Cuisine', 'Électronique', 'Fashions'],
-        'Sous-Catégorie': ['Casques audio', 'Sacs à main', 'Couteaux de cuisine', 'Ordinateurs', 'Chaussures'],
-    })
-
-    # Concaténation de s DataFrames pour obtenir une base de données plus grande
-    webscrap = pd.concat([webscrap, additional_data], ignore_index=True)
 
     data = {country: generate_random_data(num_points) for country in countries}
     df = pd.DataFrame(data)
     # Assume commentaire is a DataFrame with a 'text' column - replace with your actual data loading logic
     commentaire = pd.read_csv("streamlit_app/macbook.csv")
 
-    search_query, selected_category, selected_subcategory, selected_product = setup_sidebar(webscrap)
 
-    sentiment_df = read_hdfs_file_via_webhdfs(selected_product)
-    st.write(sentiment_df)
+    #sentiment_df = read_hdfs_file_via_webhdfs(selected_product)
+    #st.write(sentiment_df)
 
-    if 'trigger_status' not in st.session_state:
-            st.session_state.trigger_status = ''
+    #if 'trigger_status' not in st.session_state:
+    #        st.session_state.trigger_status = ''
+#
+    #if st.sidebar.button("Trigger Airflow DAG"):
+    #    response = trigger_dag("youtube_data", st.session_state.selected_product)
+#
+    #    if response.status_code == 200:
+    #        st.session_state.trigger_status = "DAG triggered successfully!"
+    #    else:
+    #        st.session_state.trigger_status = f"Failed to trigger DAG. Status Code: {response.status_code}"
+#
+    #st.sidebar.write(st.session_state.trigger_status)
 
-    if st.sidebar.button("Trigger Airflow DAG"):
-        response = trigger_dag("youtube_data", st.session_state.selected_product)
+    #filtered_data = filter_data(search_query, selected_category, selected_subcategory, selected_product, webscrap, df)
 
-        if response.status_code == 200:
-            st.session_state.trigger_status = "DAG triggered successfully!"
-        else:
-            st.session_state.trigger_status = f"Failed to trigger DAG. Status Code: {response.status_code}"
 
-    st.sidebar.write(st.session_state.trigger_status)
+    if selected_product is None or selected_product == "Select the product":
+        # Display the welcome message if no product is selected
+        centering_css = """
+        <style>
+            .centered {
+                position: absolute;
+                color: white;
+                text-align: center;
+            }
+        </style>
+        """
 
-    filtered_data = filter_data(search_query, selected_category, selected_subcategory, selected_product, webscrap, df)
+        # Inject CSS with markdown
+        st.markdown(centering_css, unsafe_allow_html=True)
 
-    display_content(selected_product, df, countries)
-    st.subheader("WordCloud")
-    generate_wordcloud(' '.join(commentaire['text']))
+        # Centered content
+        st.markdown("<div class='centered'><h1>Welcome to Amazon Products Reputation Dashboard</h1></div>", unsafe_allow_html=True)
+
+
+    else:
+        # Display the dashboard content if a product is selected
+        display_content(selected_product, df, countries)
+        st.subheader("WordCloud")
+        generate_wordcloud(' '.join(commentaire['text']))
 
 if __name__ == "__main__":
     main()
