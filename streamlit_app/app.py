@@ -12,6 +12,7 @@ from tempfile import NamedTemporaryFile
 import json
 from io import BytesIO
 from streamlit import session_state as state
+import time
 
 
 # Dynamically add the project root to sys.path
@@ -46,7 +47,8 @@ def select_category():
     search_query = st.sidebar.text_input("Produit, catégorie ou sous-catégorie :", "")
 
     st.sidebar.title("Filtres")
-    categories = getCategoriesNames()
+    #categories = getCategoriesNames()
+    categories = ['All Departments', 'Alexa Skills', 'Amazon Devices', 'Amazon Global Store', 'Amazon Warehouse', 'Apps & Games', 'Audible Audiobooks', 'Automotive', 'Baby', 'Books', 'Camera & Photo', 'CDs & Vinyl', 'Classical Music', 'Computers & Accessories', 'Deals', 'Digital Music', 'DVD & Blu-ray', 'Electronics & Photo', 'Fashion', '   Women', '   Men', '   Girls', '   Boys', '   Baby', 'Garden & Outdoors', 'Gift Cards', 'Grocery', 'Handmade', 'Health & Personal Care', 'Home & Business Services', 'Home & Kitchen', 'Home Improvement', 'Industrial & Scientific', 'Kindle Store', 'Large Appliances', 'Lighting', 'Luggage and travel gear', 'Luxury Stores', 'Magazines', 'Musical Instruments & DJ Equipment', 'Office Products', 'PC & Video Games', 'Perfume & Cosmetic', 'Pet Supplies', 'Premium Beauty', 'Prime Video', 'Software', 'Sports', 'Subscribe & Save', 'tegut...', 'Toys & Games']
     # Adding a placeholder at the beginning of the categories list
     options = ["Select a category"] + categories[1:]
     selected_category = st.sidebar.selectbox(
@@ -250,37 +252,32 @@ def read_hdfs_file_via_webhdfs(product_name):
             return df
     return None
 
+def trigger_and_wait_for_file(selected_product):
+    """Triggers an Airflow DAG and waits for the output file to appear in HDFS."""
+    response = trigger_dag("youtube_data", selected_product)
+    if response.status_code == 200:
+        st.session_state.trigger_status = "DAG triggered successfully!"
+        print("je suis la")
+        time.sleep(120)
+        # Set the expected HDFS directory based on the product name
+        directory_path = f"/hadoop/hdfs/youtube/{selected_product}.parquet/"
+        for _ in range(10):  # Limit the number of attempts to 10
+            file_names = list_hdfs_directory_files(selected_product)
+            parquet_file = next((name for name in file_names if name.endswith('.parquet')), None)
+            if parquet_file:
+                st.session_state.trigger_status = "File is ready in HDFS."
+                return read_parquet_file_via_webhdfs(directory_path + parquet_file)
+            time.sleep(30)  # Wait for 30 seconds before retrying
+        st.session_state.trigger_status = "File not found in HDFS after waiting."
+    else:
+        st.session_state.trigger_status = f"Failed to trigger DAG. Status Code: {response.status_code}"
+    return None
+
+
+
 def main():
     selected_product = setup_sidebar()
-
-    num_points = 105
-    countries = ["Morocco", "France", "US", "Canada", "Nigeria"]
-
-    data = {country: generate_random_data(num_points) for country in countries}
-    df = pd.DataFrame(data)
-    # Assume commentaire is a DataFrame with a 'text' column - replace with your actual data loading logic
-    commentaire = pd.read_csv("streamlit_app/macbook.csv")
-
-
-    #sentiment_df = read_hdfs_file_via_webhdfs(selected_product)
-    #st.write(sentiment_df)
-
-    #if 'trigger_status' not in st.session_state:
-    #        st.session_state.trigger_status = ''
-#
-    #if st.sidebar.button("Trigger Airflow DAG"):
-    #    response = trigger_dag("youtube_data", st.session_state.selected_product)
-#
-    #    if response.status_code == 200:
-    #        st.session_state.trigger_status = "DAG triggered successfully!"
-    #    else:
-    #        st.session_state.trigger_status = f"Failed to trigger DAG. Status Code: {response.status_code}"
-#
-    #st.sidebar.write(st.session_state.trigger_status)
-
-    #filtered_data = filter_data(search_query, selected_category, selected_subcategory, selected_product, webscrap, df)
-
-
+    st.session_state["trigger_statut"] = ""
     if selected_product is None or selected_product == "Select the product":
         # Display the welcome message if no product is selected
         centering_css = """
@@ -292,19 +289,52 @@ def main():
             }
         </style>
         """
-
-        # Inject CSS with markdown
         st.markdown(centering_css, unsafe_allow_html=True)
 
         # Centered content
         st.markdown("<div class='centered'><h1>Welcome to Amazon Products Reputation Dashboard</h1></div>", unsafe_allow_html=True)
 
-
     else:
-        # Display the dashboard content if a product is selected
-        display_content(selected_product, df, countries)
-        st.subheader("WordCloud")
-        generate_wordcloud(' '.join(commentaire['text']))
+        centering_css = """
+        <style>
+            .centered {
+                position: absolute;
+                color: white;
+                text-align: center;
+            }
+        </style>
+        """
+        st.markdown(centering_css, unsafe_allow_html=True)
+
+        st.markdown("<div class='centered'><h1>Welcome to Amazon Products Reputation Dashboard</h1></div>", unsafe_allow_html=True)
+
+         # Trigger and wait for Airflow DAG
+        if st.sidebar.button("Trigger Airflow DAG"):
+            print("C'est parti")
+            with st.spinner('Please wait while the DAG is being triggered...'):
+                sentiment_df = trigger_and_wait_for_file(selected_product) 
+
+            if sentiment_df is not None:
+                st.write("Dataframe loaded successfully:", sentiment_df)
+            else:
+                st.error("Failed to load data from HDFS.")
+                
+        # Setup other data if a product is selected
+        if st.session_state.trigger_statut == "DAG triggered successfully!":
+            num_points = 105
+            countries = ["Morocco", "France", "US", "Canada", "Nigeria"]
+            data = {country: generate_random_data(num_points) for country in countries}
+            df = pd.DataFrame(data)
+
+            # Display the dashboard content if a product is selected
+            display_content(selected_product, df, countries)
+            st.subheader("WordCloud")
+            # Assume commentaire is a DataFrame with a 'text' column - replace with your actual data loading logic
+            commentaire = pd.read_csv("streamlit_app/macbook.csv")
+            generate_wordcloud(' '.join(commentaire['text']))
+
+       
+
 
 if __name__ == "__main__":
     main()

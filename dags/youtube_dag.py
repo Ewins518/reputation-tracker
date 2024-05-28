@@ -29,7 +29,7 @@ dag = DAG(
 )
 
 def get_product_name(**kwargs):
-    return kwargs['dag_run'].conf.get('product_name', Variable.get("default_product_name", "DefaultProduct"))
+    return kwargs['dag_run'].conf.get('product_name', Variable.get("default_product_name", "iphone 14"))
 
 # PythonOperator to retrieve product_name
 get_product_name_task = PythonOperator(
