@@ -76,7 +76,7 @@ def search_videos(product_name, location):
     return video_ids
 
 def get_comments_for_product(product_name):
-    df = pd.DataFrame()
+    df = pd.DataFrame(columns=['updated_at', 'text', 'country'])
 
     for coords, country in zip(coordinates, countries):
         location = f"{coords[0]},{coords[1]}"
@@ -93,24 +93,24 @@ def get_comments_for_product(product_name):
     return df
 
 def stream_data(product_name):
-   
+    res = get_comments_for_product(product_name)
+    print("res.............", res)
     try:
         res = get_comments_for_product(product_name)
-        print("res.............",res)
+        print("res.............", res)
         for index, row in res.iterrows():
+            data = {
+                "updated_at": row['updated_at'],
+                "text": row['text'],
+                "country": row['country']
+            }
+            print("Sending data to Kafka:", data)
             yield (
                 json.dumps({"index": index}),
-                json.dumps({
-                    "updated_at": row['updated_at'],
-                    "text": row['text'],
-                    "country": row['country']
-                })
+                json.dumps(data)
             )
-        print("Les données sont envoyé")
-    
+        print("Les données sont envoyées")
     except Exception as e:
-        logging.error(f'An error occured: {e}')
-
-
+        logging.error(f'An error occurred: {e}')
 
 

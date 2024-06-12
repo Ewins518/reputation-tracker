@@ -29,7 +29,7 @@ dag = DAG(
 )
 
 def get_product_name(**kwargs):
-    return kwargs['dag_run'].conf.get('product_name', Variable.get("default_product_name", "iphone 14"))
+    return kwargs['dag_run'].conf.get('product_name', Variable.get("default_product_name", "samsung S24"))
 
 # PythonOperator to retrieve product_name
 get_product_name_task = PythonOperator(
@@ -62,4 +62,5 @@ spark_data = SparkSubmitOperator(
     )
 
 pull_data >> spark_data
+#pull_data
 #spark_data

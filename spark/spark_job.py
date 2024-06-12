@@ -62,9 +62,10 @@ def connect_to_kafka(spark_conn):
 
 def create_selection_df_from_kafka(spark_df):
     schema = StructType([
-        StructField("updated_at", StringType(), False),
         StructField("text", StringType(), False),
-        StructField("country", StringType(), False)
+        StructField("country", StringType(), False),
+        StructField("updated_at", StringType(), False),
+
     ])
 
     sel = spark_df.selectExpr("CAST(value AS STRING)") \
@@ -101,9 +102,7 @@ def get_sentiment(df):
     sentiments = df_with_sentiment.select("sentiment")
     return sentiments
 
-#recuperer la colonne text du dataframe
 def get_text(df):
-    #retourner seulement la colonne text
     texts = df.select("text")
     return texts
 
