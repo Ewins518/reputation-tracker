@@ -2,10 +2,7 @@
 
 ## Demo Video
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=nPhIFRTP1Vw" target="_blank">
-    <img src="https://img.youtube.com/vi/nPhIFRTP1Vw/0.jpg" alt="Watch the video" style="width:100%;">
-  </a>
-</p>
+https://github.com/Ewins518/project-S3/assets/74628423/b014a1ed-c924-4f07-a551-64af52234d42
+
 
 ## Project Overview
