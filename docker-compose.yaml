@@ -395,7 +395,7 @@ services:
     image: reputation_inference
     ports:
       - "80:80"
-    container_name: reputation_inference
+    container_name: sentiment_analysis
 
 
 volumes:

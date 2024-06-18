@@ -13,6 +13,8 @@ import json
 from io import BytesIO
 from streamlit import session_state as state
 import time
+import folium
+from streamlit_folium import folium_static
 
 
 # Dynamically add the project root to sys.path
@@ -23,12 +25,16 @@ from dags.trigger_dag import trigger_dag
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
+coordinates = {
+    "Morocco": [34.02, -6.83],
+    "France": [48.86, 2.35],
+    "Japan": [35.68, 139.76],
+    "USA": [40.71, -74.01],
+    "South Africa": [-26.2, 28.04]
+}
 
-def generate_random_data(num_points):
-    return np.random.choice([0, 1], size=num_points)
-
-def generate_wordcloud(text):
-    wordcloud = WordCloud(width=800, height=400, max_words=200, background_color='white').generate(text)
+def generate_wordcloud(text, font_path='streamlit_app/Amiri/Amiri-Regular.ttf'):
+    wordcloud = WordCloud(width=800, height=400, max_words=200,  font_path=font_path,background_color='white').generate(text)
     plt.figure(figsize=(10, 5))
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis('off')
@@ -122,7 +128,7 @@ def select_subcategory(selected_category):
 
 def setup_sidebar():
     search_query, selected_category = select_category()
-
+    st.session_state.trigger_status = ""
     selected_subcategory = None
     selected_product = None
     if selected_category and 'selected_category' in st.session_state:
@@ -149,48 +155,98 @@ def filter_data(search_query, selected_category, selected_subcategory, selected_
     return filtered_data
 
 
-# Function to display the main content of the app
-def display_content(selected_product, df, countries):
+def update_country():
+    st.session_state.selected_country = st.session_state.country_select
+    #st.rerun()
+
+
+
+def display_content(selected_product, df):
     st.title(f"{selected_product} Reputation")
 
     row1 = st.columns(3)
     row2 = st.columns(2)
 
-
-    with row2[0]:
-        selected_country = st.selectbox("Sélectionnez un pays", countries)
-        num = df[selected_country].value_counts()
-        colors = {0: 'red', 1: 'green'}
-        fig_donut = px.pie(df, names=selected_country, color=selected_country, hole=0.4,color_discrete_map=colors, title='Diagramme en secteurs')
-        st.plotly_chart(fig_donut, use_container_width=True)
+    # Calculate the number of positive and negative comments
+    sentiment_counts = df['sentiment'].value_counts()
+    total_comments = len(df)
+    positive_comments = sentiment_counts.get(1, 0)
+    negative_comments = sentiment_counts.get(0, 0)
 
     with row1[0]:
         container = st.container()
-        container.markdown("**Commentaire Total**")
-        container.write(len(df))
+        container.markdown("**Total Comments**")
+        container.write(total_comments)
 
     with row1[1]:
         container = st.container()
-        container.markdown("**Commentaires positifs**")
-        container.write(num.get(1, 0))
+        container.markdown("**Positive Comments**")
+        container.write(positive_comments)
 
     with row1[2]:
         container = st.container()
-        container.markdown("**Commentaires négatifs**")
-        container.write(num.get(0, 0))
+        container.markdown("**Negative Comments**")
+        container.write(negative_comments)
 
+    # Select a country
+    country_list = df['country'].unique().tolist()
+
+    with row2[0]:
+        if 'selected_country' not in st.session_state:
+            st.session_state['selected_country'] = country_list[0]
+
+        selected_country = st.selectbox(
+            "Select a country",
+            country_list,
+            key='country_select',
+            index=country_list.index(st.session_state.selected_country),
+            on_change=update_country
+        )
+
+        selected_country = st.session_state.selected_country
+
+        # Filter the DataFrame by the selected country
+        country_df = df[df['country'] == selected_country]
+
+        if not country_df.empty:
+            fig_donut = px.pie(country_df, names='sentiment', hole=0.4,
+                               title='Sentiment Distribution',
+                               color='sentiment', 
+                               color_discrete_map={0: 'red', 1: 'green'})
+            st.plotly_chart(fig_donut, use_container_width=True)
+        else:
+            st.write("No comments for the selected country.")
+
+
+    # Plot the pie chart for sentiments
     with row2[1]:
-        coordinates = [[34.02, -6.83], [48.86, 2.35], [35.68, 139.76], [40.71, -74.01], [-26.2, 28.04]]
-        countries = ['Morocco','France','Japan','USA','South Africa']
+        map_data = []
+        for country in df['country'].unique():
+            if country in coordinates:
+                coord = coordinates[country]
+                sentiment_df = df[df['country'] == country]
+                pos_count = sentiment_df[sentiment_df['sentiment'] == 1].shape[0]
+                neg_count = sentiment_df[sentiment_df['sentiment'] == 0].shape[0]
+                color = 'green' if pos_count > neg_count else 'red'
+                map_data.append({
+                    'country': country,
+                    'latitude': coord[0],
+                    'longitude': coord[1],
+                    'color': color,
+                    'pos_count': pos_count,
+                    'neg_count': neg_count
+                })
 
-        df = pd.DataFrame(np.concatenate([coordinates, np.random.randint(10, 30, (5, 2))], axis=1),
-                          columns=['lat', 'lon', 'Negative', 'Positive'])
-        df['Country'] = countries
-
-        # Color markers based on the comparison of 'Positive' and 'Negative'
-        df['Color'] = np.where(df['Positive'] > df['Negative'], '#00ff00', '#ff0000')
-        # Create a Streamlit map
-        st.map(df, color="Color", size = 500000)
+        if map_data:
+            m = folium.Map(location=[20, 0], zoom_start=1)
+            for data in map_data:
+                folium.Marker(
+                    location=[data['latitude'], data['longitude']],
+                    popup=f"{data['country']}: Positive - {data['pos_count']}, Negative - {data['neg_count']}",
+                    icon=folium.Icon(color=data['color']) 
+                ).add_to(m)
+            st.subheader("Comments Location")
+            folium_static(m,400,400)
 
 
 def read_hdfs_parquet_file(product_name):
@@ -258,7 +314,7 @@ def trigger_and_wait_for_file(selected_product):
     if response.status_code == 200:
         st.session_state.trigger_status = "DAG triggered successfully!"
         print("je suis la")
-        time.sleep(120)
+        time.sleep(180)
         # Set the expected HDFS directory based on the product name
         directory_path = f"/hadoop/hdfs/youtube/{selected_product}.parquet/"
         for _ in range(10):  # Limit the number of attempts to 10
@@ -274,67 +330,49 @@ def trigger_and_wait_for_file(selected_product):
     return None
 
 
-
 def main():
-    selected_product = setup_sidebar()
-    st.session_state["trigger_statut"] = ""
-    if selected_product is None or selected_product == "Select the product":
+    selected_product = setup_sidebar() 
+    #selected_product = "Fenzy"
+    button = st.sidebar.button("Trigger Airflow DAG")
+    if 'trigger_status' not in st.session_state:
+        st.session_state['trigger_status'] = ""
+
+    if 'random' not in st.session_state:
+        st.session_state['random'] = ""
+    
+    #st.session_state.trigger_status = ""
+
+    centering_css = """
+        <style>
+            .centered {
+                position: absolute;
+                color: white;
+                text-align: center;
+            }
+        </style>"""
+    st.markdown(centering_css, unsafe_allow_html=True)
+
+    welcome_message_placeholder = st.empty()
+
+    if st.session_state['trigger_status'] == "":
         # Display the welcome message if no product is selected
-        centering_css = """
-        <style>
-            .centered {
-                position: absolute;
-                color: white;
-                text-align: center;
-            }
-        </style>
-        """
-        st.markdown(centering_css, unsafe_allow_html=True)
+        welcome_message_placeholder.markdown("<div class='centered'><h1>Welcome to Amazon Products Reputation Dashboard</h1></div>", unsafe_allow_html=True)
+    
+    if button or st.session_state.trigger_status != "":
+        st.session_state.trigger_status = "DAG triggered successfully!"
+        welcome_message_placeholder.empty()
 
-        # Centered content
-        st.markdown("<div class='centered'><h1>Welcome to Amazon Products Reputation Dashboard</h1></div>", unsafe_allow_html=True)
+        with st.spinner('Please wait while the DAG is being triggered...'):
+            sentiment_df = read_hdfs_file_via_webhdfs(selected_product)
 
-    else:
-        centering_css = """
-        <style>
-            .centered {
-                position: absolute;
-                color: white;
-                text-align: center;
-            }
-        </style>
-        """
-        st.markdown(centering_css, unsafe_allow_html=True)
+            if sentiment_df is None:
+                sentiment_df = trigger_and_wait_for_file(selected_product)
 
-        st.markdown("<div class='centered'><h1>Welcome to Amazon Products Reputation Dashboard</h1></div>", unsafe_allow_html=True)
-
-         # Trigger and wait for Airflow DAG
-        if st.sidebar.button("Trigger Airflow DAG"):
-            print("C'est parti")
-            with st.spinner('Please wait while the DAG is being triggered...'):
-                sentiment_df = trigger_and_wait_for_file(selected_product) 
-
-            if sentiment_df is not None:
-                st.write("Dataframe loaded successfully:", sentiment_df)
-            else:
-                st.error("Failed to load data from HDFS.")
-                
-        # Setup other data if a product is selected
-        if st.session_state.trigger_statut == "DAG triggered successfully!":
-            num_points = 105
-            countries = ["Morocco", "France", "US", "Canada", "Nigeria"]
-            data = {country: generate_random_data(num_points) for country in countries}
-            df = pd.DataFrame(data)
-
-            # Display the dashboard content if a product is selected
-            display_content(selected_product, df, countries)
+            st.session_state.trigger_status = "DAG triggered successfully!"
+           
+            display_content(selected_product, sentiment_df)
             st.subheader("WordCloud")
-            # Assume commentaire is a DataFrame with a 'text' column - replace with your actual data loading logic
-            commentaire = pd.read_csv("streamlit_app/macbook.csv")
-            generate_wordcloud(' '.join(commentaire['text']))
-
-       
-
+            generate_wordcloud(' '.join(sentiment_df['text']))
 
 if __name__ == "__main__":
     main()

@@ -89,7 +89,7 @@ def read_data_from_hdfs(spark_conn,product_name):
 #La fonction UDF pour interroger reputation_inference
 @udf(IntegerType())
 def predict_sentiment(comment):
-    url = 'http://reputation_inference:80/predict_sentiment/' + comment
+    url = 'http://sentiment_analysis:80/predict_sentiment/' + comment
     response = requests.post(url)
     result = response.json()
     print(result)
