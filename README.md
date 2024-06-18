@@ -54,5 +54,7 @@ The "Big Data Architecture for Products Reputation and Tracking" project aims to
 - **Geographical Insights**: Displays the geographical distribution of product reviews.
 
 
+## How to run this project?
 
+** Coming soon **
 
