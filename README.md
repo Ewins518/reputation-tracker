@@ -1,4 +1,4 @@
-# Amazon Products Reputation Dashboard
+# Big Data Architecture for Products Reputation and Tracking
 
 ## Demo Video
 
@@ -15,7 +15,7 @@ The "Big Data Architecture for Products Reputation and Tracking" project aims to
 ## Architecture Components
 
 ### Data Sources:
-- **Amazon Product API**: Used to get the product name,its categories, subcategories,...
+- **Amazon**: Used to get the product name,its categories, subcategories,... by a dynamically webscraping
 - **YouTube API**: Used to fetch product-related comments and reviews from YouTube
 
 ### Data Ingestion:
@@ -36,6 +36,22 @@ The "Big Data Architecture for Products Reputation and Tracking" project aims to
 ### Microservices and Containerization:
 **Docker**: The entire architecture is containerized using Docker. This ensures consistency across different environments and simplifies deployment and scaling of the system.
 
+
+## Features
+
+- **Real-Time Data Ingestion**: Captures real-time data from YouTube using Apache Kafka.
+
+- **Scalable Data Processing**:Processes large volumes of data using Apache Spark, ensuring scalability and efficiency.
+
+- **Robust Data Storage**: Utilizes Hadoop HDFS for scalable and fault-tolerant data storage.
+
+- **Automated Workflows**: Orchestrates data pipelines using Apache Airflow, ensuring automated and timely data processing.
+
+- **Interactive Dashboards**: Visualizes data using Streamlit, providing interactive and insightful visualizations.
+
+- **Sentiment Analysis**: Analyzes product-related comments from youtube to determine the sentiment using a pre-trained LLM model.
+
+- **Geographical Insights**: Displays the geographical distribution of product reviews.
 
 
 
