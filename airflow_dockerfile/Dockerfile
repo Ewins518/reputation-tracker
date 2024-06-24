@@ -1,7 +1,7 @@
 FROM apache/airflow:2.7.3
 
 USER root
-RUN sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C
+#RUN sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C
 RUN apt-get update
 # Install OpenJDK-11
 RUN apt update && \

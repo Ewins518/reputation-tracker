@@ -7,6 +7,11 @@
 │   ├── __init__.py
 │   ├── pull_youtube_data.py
 │   ├── __pycache__
+│   │   ├── __init__.cpython-39.pyc
+│   │   ├── pull_youtube_data.cpython-38.pyc
+│   │   ├── trigger_dag.cpython-38.pyc
+│   │   ├── trigger_dag.cpython-39.pyc
+│   │   └── youtube_dag.cpython-38.pyc
 │   ├── trigger_dag.py
 │   └── youtube_dag.py
 ├── docker-compose.yaml
@@ -21,11 +26,27 @@
 │   └── spark-token-provider-kafka-0-10_2.12-3.1.2.jar
 ├── logs
 │   ├── dag_id=youtube_data
-│   ├── dag_processor_manager
-│   └── scheduler
+│   │   ├── run_id=manual__2023-12-02T09:35:42.326306+00:00
+│   │   │   └── task_id=pull_youtube_comment
+│   │   │       ├── attempt=1.log
+│   │   │       └── attempt=2.log
+│   │   
+│       │   ├── trigger_dag.py.log
+│       │   └── youtube_dag.py.log
+│       ├── 2024-05-28
+│       │   ├── native_dags
+│       │   │   rial_taskflow_api_virtualenv.py.log
+│       │   ├── trigger_dag.py.log
+│       │   └── youtube_dag.py.log
+│       └── latest -> /opt/airflow/logs/scheduler/2024-06-17
 ├── model
 │   ├── app
+│   │   ├── distilbert_model.onnx
+│   │   ├── onnx_api.py
+│   │   └── requirement.txt
 │   └── Dockerfile
+├── photos
+│   └── projects3_arch.png
 ├── plugins
 ├── README.md
 ├── spark
@@ -34,8 +55,24 @@
 │   ├── Dockerfile
 │   └── spark-env.sh
 ├── streamlit_app
-│   ├── app.py
-│   └── macbook.csv
-└── tree.txt
+│   ├── Amiri
+│   │   ├── Amiri-BoldItalic.ttf
+│   │   ├── Amiri-Bold.ttf
+│   │   ├── Amiri-Italic.ttf
+│   │   ├── Amiri-Regular.ttf
+│   │   └── OFL.txt
+│   └── app.py
+├── tree.txt
+└── webscraping
+    ├── driver
+    │   ├── chromedriver-linux64
+    │   │   ├── chromedriver
+    │   │   └── LICENSE.chromedriver
+    │   └── chromedriver-linux64.zip
+    ├── __init__.py
+    ├── main.py
+    └── __pycache__
+        ├── __init__.cpython-39.pyc
+        └── main.cpython-39.pyc
 
-15 directories, 23 files
+601 directories, 1948 files
